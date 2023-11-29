@@ -1,0 +1,7 @@
+{
+  "name": "eyees",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite"
+}
