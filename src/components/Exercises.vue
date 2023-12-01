@@ -31,17 +31,6 @@
                 </ion-row>
             </ion-grid>
         </template>
-        <!-- <template >
-            <div class="exercise">
-                <div></div>
-                <div>
-                   
-                </div>
-                <div class="timeLine">
-                    
-                </div>
-            </div>
-        </template> -->
 
         <template v-if="state == 'break'">
             <p>Перерыв:</p>
@@ -90,7 +79,7 @@
                 {id:3},
             ],
             currentExercisesIndex: 0,
-            breakTime: 6000,
+            breakTime: 5000,
             infoTime: 5000,
             timeToStart: null,
             exercisesTime: 5000,

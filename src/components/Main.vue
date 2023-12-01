@@ -1,7 +1,7 @@
 <template>
     <ion-page class="container">
       <ion-tabs>    
-        <ion-router-outlet class="content"></ion-router-outlet>
+        <ion-router-outlet></ion-router-outlet>
         <ion-tab-bar slot="bottom">
           <ion-tab-button tab="schedule" href="/main/schedule">
             <ion-icon :icon="$options.icons.calendarOutline"></ion-icon>
@@ -72,13 +72,29 @@
 </script>
   
 <style scoped>
-    .container{
-        width: 100vw;
-        height: 100vh;
-        font-family: "Roboto";
-        background-color: #6e6e6e;            
-    }
-    .content{
-        height: 100%;
-    }
+  .container{
+      width: 100vw;
+      height: 100vh;
+      font-family: "Roboto";
+      background-color: #6e6e6e;
+  }
+  .content{
+      height: 100%;
+  }
+
+  ion-tabs {
+    /* --background: #6e6e6e; */
+    --border-color: #6e6e6e;
+  }
+  ion-tab-bar {
+    --background: #6e6e6e;
+    --border: none;    
+    --color: rgba(0, 0, 0, 0.404);
+  }
+
+
+  ion-tab-button{
+    --color-selected: rgb(0, 0, 0);
+  }
+  
 </style>
