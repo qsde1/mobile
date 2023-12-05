@@ -41,6 +41,8 @@
     podiumOutline,
   } from 'ionicons/icons';
   
+  import store from '../storage/storage'
+
   export default {
     components: {
       IonPage,
@@ -63,11 +65,21 @@
       eyeOutline,
     },
 
+    store,
+
     data(){
       return {
 
       }
     },
+
+    //удаление просроченных сетов
+    created(){
+      setInterval(async () =>{
+        this.$options.store.deleteOldSetFromShadule();
+        console.log('delete');
+      }, 5000);
+    }
   }
 </script>
   

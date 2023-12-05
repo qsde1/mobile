@@ -1,27 +1,32 @@
 <template>
-  <ion-page class="ion-justify-content-center">
+  <ion-page :class="{'ion-justify-content-start': state == 'calendar', 'ion-justify-content-center': state == 'clock'}">
     <div class="calendar ion-align-self-center" v-if="state == 'calendar'">
       <p class="current-date">
         <span>
-          <ion-icon class="top-icon" :icon="$options.icons.chevronBackOutline" @click="incrementHourse()"></ion-icon>
+          <ion-icon class="top-icon" :icon="$options.icons.chevronBackOutline" @click="nextMonth()"></ion-icon>
         </span>
         <span class="current-month">
-          ноябрь
+          {{ month }}
         </span>
         <span>
-          <ion-icon class="top-icon" :icon="$options.icons.chevronForwardOutline" @click="incrementHourse()"></ion-icon>
+          <ion-icon class="top-icon" :icon="$options.icons.chevronForwardOutline" @click="prevMonth()"></ion-icon>
         </span>
       </p>
       <ion-grid>
-        <ion-row v-for="(week,weekIndex) in month">
+        <ion-row>
+          <ion-col v-for="dayName in $options.weekDaysName">
+            {{ dayName }}
+          </ion-col>
+        </ion-row>
+        <ion-row v-for="(week,weekIndex) in calendar">
           <template v-if="weekIndex == 0 && week.length < 7">
-            <ion-col v-for="i in week.length + 1"></ion-col>                
+            <ion-col v-for="i in 7 - week.length"></ion-col>                
           </template>
-          <ion-col class="no-empty" v-for="day in week" @click="state = 'clock'">
+          <ion-col class="no-empty" v-for="day in week" :class="{'day-have-set': dayIsContainsInShedule(day)}" @click="createTimeForSet(+day)">
             <span>{{ day }}</span>
           </ion-col>
-          <template v-if="weekIndex == month.length-1 && week.length < 7">
-            <ion-col v-for="i in week.length + 1"></ion-col>
+          <template v-if="weekIndex == calendar.length-1 && week.length < 7">
+            <ion-col v-for="i in 7 - week.length"></ion-col>
           </template>
         </ion-row>
       </ion-grid>
@@ -38,9 +43,7 @@
             <ion-icon class="top-icon" :icon="$options.icons.chevronDownOutline" @click="decrementHourse()"></ion-icon>
           </div>
           <div class="clock-item">
-            <!-- <ion-icon class="top-icon" :icon="$options.icons.chevronUpOutline" @click="hourse++"></ion-icon> -->
             <p>:</p>
-            <!-- <ion-icon class="top-icon" :icon="$options.icons.chevronDownOutline" @click="minutes--"></ion-icon> -->
           </div>
           <div class="clock-item">
             <ion-icon class="bottom-icon" :icon="$options.icons.chevronUpOutline" @click="incrementMinutes()"></ion-icon>
@@ -49,7 +52,7 @@
           </div>
         </div>
         <div class="add-button">
-          <span @click="addTime()">
+          <span @click="addSetInShedule()">
             добавить
           </span>
         </div>
@@ -101,6 +104,31 @@
     },
     store,
 
+    months:{
+      0: 'январь',
+      1: 'февраль',
+      2: 'март',
+      3: 'апрель',
+      4: 'май',
+      5: 'июнь',
+      6: 'июль',
+      7: 'август',
+      8: 'сентябрь',
+      9: 'октябрь',
+      10: 'ноябрь',
+      11: 'декабрь',
+    },
+
+    weekDaysName:{
+      1: 'пн',
+      2: 'вт',
+      3: 'ср',
+      4: 'чт',
+      5: 'пт',
+      6: 'сб',
+      7: 'вс',
+    },
+
     icons: {
       chevronUpOutline,
       chevronDownOutline,
@@ -110,18 +138,11 @@
 
     data(){
       return {
-        month: [
-          [1,2,3],
-          [8,9,10,11,12,13,14],
-          [15,16,17,18,19,20,21],
-          [22,23,24,25,26,27,28],
-          [29,30,31]
-        ],
-        // month: null,
-        datePeek: null,        
-        state: 'clock',
+        selectedDate: new Date(),
+        state: 'calendar',
         hourse: 0,
-        minutes: 0,        
+        minutes: 0,
+        shedule: null,
       }
     },
 
@@ -132,10 +153,82 @@
       
       currentMinutes(){
         return this.minutes.toString().length < 2 ? '0' + this.minutes : this.minutes;
+      },
+
+      month(){        
+        let month = this.selectedDate.getMonth();
+        return this.$options.months[month];
+      },
+
+      calendar(){
+        let date = this.selectedDate;
+        let dayCountInCurrentMonth = this.getDayCountInMonth(date.getTime());
+        let month = [];
+        let week = [];
+        for (let i = 1; i <= dayCountInCurrentMonth; i++) {
+          date.setDate(i);
+          week.push(date.getDate());
+          let dayIndexInWeek = date.getDay();
+          if(dayIndexInWeek == 0 || i == dayCountInCurrentMonth) {
+            month.push(week);
+            week = [];
+          }
+        }
+        return month;
+      }
+    },
+
+    watch:{
+      shedule(o,n){
+        console.log('watch:' + n);
+      },
+
+      selectedDate(o,n){
+        console.log("watch: " + n);
       }
     },
 
     methods:{
+      dayIsContainsInShedule(day){
+        let startDay = new Date(this.selectedDate);
+        startDay.setDate(day);
+        startDay.setHours(0);
+        startDay.setMinutes(0);
+        startDay.setSeconds(0);
+        
+        let endDay = new Date(this.selectedDate);
+        endDay.setDate(day);
+        endDay.setHours(23);
+        endDay.setMinutes(59);
+        endDay.setSeconds(59);
+
+        if(!this.shedule)
+          return null;
+
+        let findedDay = this.shedule.find(t=>{
+          return t >= startDay.getTime() || t <= endDay.getTime();
+        })
+
+        return findedDay == true;
+      },
+
+      nextMonth(){
+        let newDate = new Date(this.selectedDate.getTime());
+        newDate.setDate(1);
+        let month = newDate.getMonth();        
+        newDate.setMonth(--month);
+        this.selectedDate = new Date(newDate.getTime())
+      },
+
+      prevMonth(){
+        let newDate = new Date(this.selectedDate.getTime());
+        newDate.setDate(1);
+        let month = newDate.getMonth();        
+        newDate.setMonth(++month);
+        this.selectedDate = new Date(newDate.getTime())
+        
+      },
+
       incrementHourse(){
         this.hourse = this.hourse < 23 ? this.hourse + 1 : 0
       },
@@ -152,17 +245,56 @@
         this.minutes = this.minutes > 0 ? this.minutes - 1 : 59
       },
 
+      getDayCountInMonth(timestamp){
+        let date = new Date(timestamp);
+        let currentMonth = date.getMonth();
+        let dayCountInCurrentMonth = 28;
+        while (true) {     
+          date.setDate(dayCountInCurrentMonth);
+          if(date.getMonth() != currentMonth){
+            dayCountInCurrentMonth--;
+            break;
+          }
+          dayCountInCurrentMonth++;
+        }
+
+        return dayCountInCurrentMonth;
+      },
+
       addTime(){
+        this.state = 'calendar';
+      },
+
+      createTimeForSet(day){
+        this.state = 'clock';
+        this.selectedDate.setDate(day);
+        this.hourse = this.selectedDate.getHours();
+        this.minutes = this.selectedDate.getMinutes();
+      },
+
+      async addSetInShedule(){
+        let newDate = new Date(this.selectedDate.getTime());        
+        newDate.setHours(this.hourse);
+        newDate.setMinutes(this.minutes);
+
+        let timestamp = newDate.getTime();
+        await this.$options.store.addSetInShedule(timestamp);
+        this.shedule = await this.$options.store.getItem('shedule');
+
         this.state = 'calendar';
       }
     },
 
     async created(){
       await this.$options.store.create();
+      // await this.$options.store.clear();
     },
-
+    
     async ionViewWillEnter(){
-
+      this.selectedDate = new Date();
+      this.selectedDate.setHours(0);
+      this.selectedDate.setMinutes(0);
+      // this.shedule = await this.$options.store.getItem('shedule');
     }
   }
 </script>
@@ -181,6 +313,10 @@
   .no-empty{
     text-align: center;
     border-bottom: 1px solid white;
+  }
+
+  .day-have-set{
+    border-bottom: 1px solid rgb(0, 0, 0);
   }
   
   ion-content{
@@ -209,6 +345,8 @@
   .current-date{
     display: flex;
     justify-content: center;
+    /* height: 15%; */
+    margin-top: 30px;
   }
   p>span{
     display: flex;  
@@ -220,10 +358,12 @@
   }
 
   .calendar{    
-    width: 95%; 
+    /* width: 95%;  */
+    /* height: 85%; */
     padding: 0 20px;   
     text-align: center;
-    font-size: 25px;
+    font-size: 20px;
+    margin-top: 10px;
   }
 
   .inner-grid{
@@ -262,6 +402,4 @@
     border-bottom: 1px solid white;
     padding: 5px 4px;
   }
-
-
 </style>  
