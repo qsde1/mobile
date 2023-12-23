@@ -3,15 +3,15 @@
       <ion-tabs>    
         <ion-router-outlet></ion-router-outlet>
         <ion-tab-bar slot="bottom">
-          <ion-tab-button tab="schedule" href="/main/schedule">
+          <ion-tab-button tab="schedule" href="/main/schedule" @click="active('schedule')" :class="{active: scheduleIsActive}">
             <ion-icon :icon="$options.icons.calendarOutline"></ion-icon>
           </ion-tab-button>
   
-          <ion-tab-button tab="exercises" href="/main/exercises">
+          <ion-tab-button tab="exercises" href="/main/exercises" @click="active('exercises')" :class="{active: exercisesIsActive}">
             <ion-icon :icon="$options.icons.eyeOutline" />
           </ion-tab-button>
   
-          <ion-tab-button tab="library" href="/main/statistics">
+          <ion-tab-button tab="library" href="/main/statistics" @click="active('library')" :class="{active: libraryIsActive}">
             <ion-icon :icon="$options.icons.podiumOutline" />
           </ion-tab-button>
         </ion-tab-bar>
@@ -69,16 +69,43 @@
 
     data(){
       return {
+        libraryIsActive: false,
+        exercisesIsActive: true,
+        scheduleIsActive: false,
+      }
+    },
 
+    methods:{
+      active(page){
+        switch (page) {
+          case 'library':
+            this.libraryIsActive = true;
+            this.exercisesIsActive = false;
+            this.scheduleIsActive = false;
+            break;
+          case 'exercises':
+            this.libraryIsActive = false;
+            this.exercisesIsActive = true;
+            this.scheduleIsActive = false;
+            break;
+          case 'schedule':
+            this.libraryIsActive = false;
+            this.exercisesIsActive = false;
+            this.scheduleIsActive = true;
+            break;
+        
+          default:
+            break;
+        }
       }
     },
 
     //удаление просроченных сетов
     created(){
-      setInterval(async () =>{
-        this.$options.store.deleteOldSetFromShadule();
-        console.log('delete');
-      }, 5000);
+      // setInterval(async () =>{
+        // this.$options.store.deleteOldSetFromShadule();
+        // console.log('delete');
+      // }, 5000);
     }
   }
 </script>
@@ -104,9 +131,13 @@
     --color: rgba(0, 0, 0, 0.404);
   }
 
+  .active{
+    color: #ffffff;
+  }
 
   ion-tab-button{
-    --color-selected: rgb(0, 0, 0);
-  }
+    color: #ffffff59;
+    /* --color-selected: rgba(255, 255, 255, 0.486); */
+  }  
   
 </style>

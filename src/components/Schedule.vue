@@ -1,6 +1,6 @@
 <template>
   <ion-page :class="{'ion-justify-content-start': state == 'calendar', 'ion-justify-content-center': state == 'clock'}">
-    <div class="calendar ion-align-self-center" v-if="state == 'calendar'">
+    <div class="calendar ion-align-self-center" v-if="state == 'calendar' && sheduleStore.shedule">
       <p class="current-date">
         <span>
           <ion-icon class="top-icon" :icon="$options.icons.chevronBackOutline" @click="nextMonth()"></ion-icon>
@@ -15,15 +15,15 @@
       <ion-grid>
         <ion-row>
           <ion-col v-for="dayName in $options.weekDaysName">
-            {{ dayName }}
+            <p class="dayName">{{ dayName }}</p>
           </ion-col>
         </ion-row>
         <ion-row v-for="(week,weekIndex) in calendar">
           <template v-if="weekIndex == 0 && week.length < 7">
             <ion-col v-for="i in 7 - week.length"></ion-col>                
           </template>
-          <ion-col class="no-empty" v-for="day in week" :class="{'day-have-set': dayIsContainsInShedule(day)}" @click="createTimeForSet(+day)">
-            <span>{{ day }}</span>
+          <ion-col class="no-empty" v-for="day in week" :class="{'day-have-set': day.isContainsInShedule}" @click="createTimeForSet(day.timestamp)">
+            <span>{{ new Date(day.timestamp).getDate() }}</span>
           </ion-col>
           <template v-if="weekIndex == calendar.length-1 && week.length < 7">
             <ion-col v-for="i in 7 - week.length"></ion-col>
@@ -38,17 +38,17 @@
       <div class="clock">
         <div class="clock-container ion-justify-content-center">
           <div class="clock-item">
-            <ion-icon class="top-icon" :icon="$options.icons.chevronUpOutline" @click="incrementHourse()"></ion-icon>
-            <p class="hourse">{{ currentHourse }}</p>
-            <ion-icon class="top-icon" :icon="$options.icons.chevronDownOutline" @click="decrementHourse()"></ion-icon>
+            <ion-icon class="top-icon white" :icon="$options.icons.chevronUpOutline" @click="incrementHourse()"></ion-icon>
+            <p class="hourse white">{{ currentHourse }}</p>
+            <ion-icon class="top-icon white" :icon="$options.icons.chevronDownOutline" @click="decrementHourse()"></ion-icon>
           </div>
           <div class="clock-item">
-            <p>:</p>
+            <p class="white">:</p>
           </div>
           <div class="clock-item">
-            <ion-icon class="bottom-icon" :icon="$options.icons.chevronUpOutline" @click="incrementMinutes()"></ion-icon>
-            <p class="minutes">{{ currentMinutes }}</p>
-            <ion-icon class="bottom-icon" :icon="$options.icons.chevronDownOutline" @click="decrementMinutes()"></ion-icon>
+            <ion-icon class="bottom-icon white" :icon="$options.icons.chevronUpOutline" @click="incrementMinutes()"></ion-icon>
+            <p class="minutes white">{{ currentMinutes }}</p>
+            <ion-icon class="bottom-icon white" :icon="$options.icons.chevronDownOutline" @click="decrementMinutes()"></ion-icon>
           </div>
         </div>
         <div class="add-button">
@@ -65,7 +65,9 @@
 </template>
   
 <script>
-  import store from '../storage/storage'
+  import store from '../storage/storage';
+  import {useSheduleStore} from '../storage/pinia-shedule';
+
   import { 
     IonPage,
     IonContent,
@@ -138,11 +140,14 @@
 
     data(){
       return {
-        selectedDate: new Date(),
+        selectedDate: null,
+        currentMonth: new Date().getMonth(),
+        currentYeaer: new Date().getFullYear(),
         state: 'calendar',
         hourse: 0,
         minutes: 0,
         shedule: null,
+        sheduleStore: null,
       }
     },
 
@@ -156,68 +161,100 @@
       },
 
       month(){        
-        let month = this.selectedDate.getMonth();
-        return this.$options.months[month];
+        return this.$options.months[this.currentMonth];
+      },
+
+      main(){
+      },  
+
+      currentTimestampWithMonthAndYear(){
+        let date = new Date();
+        date.setFullYear(this.currentYeaer);
+        date.setMonth(this.currentMonth);
+        date.setDate(1);
+        return date;
       },
 
       calendar(){
-        let date = this.selectedDate;
+        // console.log('calendar:' + this.sheduleStore.shedule);
+        let dayIsContainsInShedule = (timestamp)=>{          
+          let startDay = new Date(timestamp);
+          startDay.setHours(0);
+          startDay.setMinutes(0);
+          startDay.setSeconds(0);
+        
+          let endDay = new Date(timestamp);
+          endDay.setHours(23);
+          endDay.setMinutes(59);
+          endDay.setSeconds(59);
+
+          
+
+          let findedDay = this.sheduleStore.shedule.find(t=>{
+            // console.log(new Date(t));
+            return t >= startDay.getTime() && t <= endDay.getTime();
+          })
+          return findedDay !== undefined;
+        }
+
+        let date = this.currentTimestampWithMonthAndYear;
+
         let dayCountInCurrentMonth = this.getDayCountInMonth(date.getTime());
         let month = [];
         let week = [];
         for (let i = 1; i <= dayCountInCurrentMonth; i++) {
           date.setDate(i);
-          week.push(date.getDate());
+          let timestamp = new Date(date.getTime()).getTime(); 
+          week.push({
+            timestamp,
+            isContainsInShedule: dayIsContainsInShedule(timestamp),
+          });
+          
           let dayIndexInWeek = date.getDay();
           if(dayIndexInWeek == 0 || i == dayCountInCurrentMonth) {
             month.push(week);
             week = [];
           }
         }
+        // console.log(month);
         return month;
+
+
+        
       }
     },
 
-    watch:{
-      shedule(o,n){
-        console.log('watch:' + n);
-      },
-
-      selectedDate(o,n){
-        console.log("watch: " + n);
+    watch:{   
+      selectedDate(newDate,oldDate){
+        // console.log(`new date: ${newDate} \n old date: ${oldDate}`);
       }
     },
 
     methods:{
-      dayIsContainsInShedule(day){
-        let startDay = new Date(this.selectedDate);
-        startDay.setDate(day);
-        startDay.setHours(0);
-        startDay.setMinutes(0);
-        startDay.setSeconds(0);
+      // dayIsContainsInShedule(timestamp){
+      //   let startDay = new Date(timestamp);
+      //   startDay.setHours(0);
+      //   startDay.setMinutes(0);
+      //   startDay.setSeconds(0);
         
-        let endDay = new Date(this.selectedDate);
-        endDay.setDate(day);
-        endDay.setHours(23);
-        endDay.setMinutes(59);
-        endDay.setSeconds(59);
+      //   let endDay = new Date(timestamp);
+      //   endDay.setHours(23);
+      //   endDay.setMinutes(59);
+      //   endDay.setSeconds(59);
 
-        if(!this.shedule)
-          return null;
 
-        let findedDay = this.shedule.find(t=>{
-          return t >= startDay.getTime() || t <= endDay.getTime();
-        })
-
-        return findedDay == true;
-      },
+      //   let findedDay = this.sheduleStore.shedule.find(t=>{
+      //     return t >= startDay.getTime() && t <= endDay.getTime();
+      //   })
+      //   return findedDay !== undefined;
+      // },
 
       nextMonth(){
         let newDate = new Date(this.selectedDate.getTime());
         newDate.setDate(1);
         let month = newDate.getMonth();        
         newDate.setMonth(--month);
-        this.selectedDate = new Date(newDate.getTime())
+        this.selectedDate = new Date(newDate.getTime());
       },
 
       prevMonth(){
@@ -225,8 +262,7 @@
         newDate.setDate(1);
         let month = newDate.getMonth();        
         newDate.setMonth(++month);
-        this.selectedDate = new Date(newDate.getTime())
-        
+        this.selectedDate = new Date(newDate.getTime());        
       },
 
       incrementHourse(){
@@ -257,7 +293,6 @@
           }
           dayCountInCurrentMonth++;
         }
-
         return dayCountInCurrentMonth;
       },
 
@@ -265,41 +300,65 @@
         this.state = 'calendar';
       },
 
-      createTimeForSet(day){
+      createTimeForSet(timestamp){
         this.state = 'clock';
-        this.selectedDate.setDate(day);
+        this.selectedDate = new Date(timestamp);
+        // console.log(this.selectedDate);
         this.hourse = this.selectedDate.getHours();
         this.minutes = this.selectedDate.getMinutes();
       },
-
+      
       async addSetInShedule(){
-        let newDate = new Date(this.selectedDate.getTime());        
+        // console.log(this.selectedDate);
+        let newDate = new Date(this.selectedDate.getTime());
+        console.log('new date: ' + newDate);
+        // console.log(newDate);
+        console.log(this.hourse);
+        console.log(this.minutes);
         newDate.setHours(this.hourse);
         newDate.setMinutes(this.minutes);
 
         let timestamp = newDate.getTime();
-        await this.$options.store.addSetInShedule(timestamp);
-        this.shedule = await this.$options.store.getItem('shedule');
-
+        this.selectedDate = new Date()
+        this.sheduleStore.addSetInShedule(timestamp);
+        // this.shedule = await this.$options.store.getItem('shedule');
         this.state = 'calendar';
       }
     },
 
     async created(){
-      await this.$options.store.create();
-      // await this.$options.store.clear();
+      // this.selectedDate = new Date();
+      this.sheduleStore = useSheduleStore();
+      // await this.sheduleStore.createStore();
+      this.sheduleStore.getShedule();
     },
     
-    async ionViewWillEnter(){
-      this.selectedDate = new Date();
-      this.selectedDate.setHours(0);
-      this.selectedDate.setMinutes(0);
-      // this.shedule = await this.$options.store.getItem('shedule');
+    ionViewWillEnter(){
+      this.sheduleStore.getShedule();
+      this.sheduleStore.getStat();
+      // this.selectedDate = new Date();
+      // this.selectedDate.setHours(0);
+      // this.selectedDate.setMinutes(0);
     }
   }
 </script>
 
 <style scoped>
+  .white{
+    color: white;
+  }
+  .hourse{
+    color: white;
+  }
+  .minutes{
+    color: white;
+  }
+  .dayName{
+    color: white;
+  }
+  ion-page{
+    color: white;  
+  }
   ion-grid{
     max-width: 700px !important;
     min-width: 250px !important;
@@ -354,7 +413,8 @@
     margin: 0 5px;    
   }
   .current-month{
-    font-size: 25px
+    font-size: 25px;
+    color: white;
   }
 
   .calendar{    

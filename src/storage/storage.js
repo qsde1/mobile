@@ -1,15 +1,15 @@
 import { Storage } from '@ionic/storage';
 
-const store = new Storage();
+const storage = new Storage();
 
 export default {
-    store,
+    storage,
     async getItems(){
-        let keys = await this.store.keys()
+        let keys = await this.storage.keys()
         let items = [];
 
         for (const key of keys) {
-            let value = await this.store.get(key);
+            let value = await this.storage.get(key);
             items.push({key,value});
         }
 
@@ -17,34 +17,42 @@ export default {
     },
 
     async getItem(key){
-        let item = await this.store.get(key);
+        if(key == 'shedule'){
+            await this.deleteOldSetFromShadule();
+        }
+        let item = await this.storage.get(key);
         return item;
     },
 
     async setItem(key,value){
-        await this.store.set(key, value);
+        await this.storage.set(key, value);
     },
 
     async remove(key){
-        await this.store.remove(key);
+        await this.storage.remove(key);
     },
 
     async create(){
-        await this.store.create();
+        await this.storage.create();
     },
 
     async addSetInShedule(timestamp){
         await this.deleteOldSetFromShadule();
+        console.log(timestamp);
 
         let shedule = null;
-        let keys = await this.store.keys();
+        let keys = await this.storage.keys();
         if(!await keys.includes('shedule')){
             shedule = [];
         } else {
-            shedule = await this.store.get('shedule')
+            shedule = await this.storage.get('shedule');
         }
 
         if(shedule){
+            let dateNow = Date.now();
+            if(dateNow > timestamp + (1_800_000))
+                return;
+
             if(!shedule.includes(timestamp))
                 shedule = [...shedule,timestamp];
         } else {
@@ -58,11 +66,11 @@ export default {
         await this.deleteOldSetFromShadule()
         
         let shedule = null;
-        let keys = await this.store.keys();
+        let keys = await this.storage.keys();
         if(!await keys.includes('shedule')){
             shedule = [];
         } else {
-            shedule = await this.store.get('shedule')
+            shedule = await this.storage.get('shedule')
         }
 
         if(shedule){
@@ -73,23 +81,82 @@ export default {
     },
 
     async deleteOldSetFromShadule(){
-        let keys = await this.store.keys();
+        let keys = await this.storage.keys();
         if(!await keys.includes('shedule')){
             return;
         }
 
-        let shedule = await this.store.get('shedule')
-        let timestamp = Date.now()
-        shedule = shedule.filter(t=>{
-            return t < timestamp + (1000 * 60 * 30)
-        })
+        let shedule = await this.storage.get('shedule');
 
-        await this.store.set('shedule',shedule);
-        console.log(await this.getItem('shedule'));
+        let timestamp = Date.now();
+        let expiredSets = shedule.filter(t=>{
+            return t + (1000 * 60 * 30) < timestamp;
+            // return t < timestamp;
+        });
+
+        if(expiredSets.length > 0) {
+            console.log(expiredSets);
+            expiredSets.forEach(async s=>{
+                await this.addSetInStat(s,'overdue');
+            });
+        }
+
+        shedule = shedule.filter(t=>{
+            return t + (1000 * 60 * 30) > timestamp;
+            // return t > timestamp;
+        })
+        await this.storage.set('shedule',shedule);
+    },
+
+    async getStat(){
+
+    },
+
+    async addSetInStat(set,type){
+        let keys = await this.storage.keys();
+        let stat = null;
+        if(!await keys.includes('stat')){
+            stat = [];
+        } else {
+            stat = await this.storage.get('stat');
+        }
+
+        if(stat.length == 0){
+            let statItem = {
+                type: type,
+                sets: [set],
+            }
+            stat.push(statItem);
+        } else {
+            let lastStat = stat[stat.length-1];
+            if(type=='done'){            
+                if(lastStat.type == 'done'){
+                    lastStat.sets.push(set);
+                } else {
+                    let statItem = {
+                        type: 'done',
+                        sets: [set],
+                    }
+                    stat.push(statItem);
+                }
+            } else {
+                if(lastStat.type == 'overdue'){
+                    lastStat.sets.push(set);
+                } else {
+                    let statItem = {
+                        type: 'overdue',
+                        sets: [set],
+                    }
+                    stat.push(statItem);
+                }
+            }
+        }
+
+        await this.storage.set('stat',stat);
     },
 
     async clear(){
-        await this.store.clear();
+        await this.storage.clear();
     }
 }
 
